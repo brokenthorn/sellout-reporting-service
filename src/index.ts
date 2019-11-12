@@ -1,26 +1,33 @@
-import { Reporter } from "./Reporter";
-import { MonthlyReportingJob } from "./Report/ReportingJob";
-import { ReportType } from "./Report";
+import {SQLServerReporter, SQLServerReporterOptions} from "./SQLServerReporter";
+import { IOnceAMonthReportingJob } from "./reports/IReportingJob";
+import { ReportType } from "./reports";
 
 // "0 22 3 * *" - cron for monthly at 22:00, 3rd day of month
 
-const reporter = new Reporter();
-
-const monthlyIqviaReportingJob: MonthlyReportingJob = {
-  reportType: ReportType.Monthly,
-  name: "Raportare lunară IQVIA",
+const options: SQLServerReporterOptions = {
+  database: "BizPharmaHO",
+  server: "10.0.0.140",
+  connectionTimeout: 5000,
+  user: "bi",
+  password: "Laurentiu53tr10",
   options: {
-    sql_query: "SELECT 1;",
-    sql_server_database: "BizPharmaHO",
-    sql_server_host: "10.0.0.140",
-    sql_server_username: "bi",
-    sql_server_password: ""
-  },
-  when: { day: 3, hour: 22, minute: 0 },
-  reportCurrentMonth: false
+    abortTransactionOnError: true,
+    appName: "sellout-reporting-service",
+    encrypt: false,
+    trustedConnection: true,
+  }
 };
 
-console.log(monthlyIqviaReportingJob);
+const reporter = new SQLServerReporter("SQL Server Reporter", options);
+
+const monthlyIqviaReportingJob: IOnceAMonthReportingJob = {
+  reportType: ReportType.OnceAMonth,
+  name: "Raportare lunară IQVIA",
+  when: { day: 3, hour: 22, minute: 0 },
+  reportCurrentMonth: false,
+};
+
+// console.log(monthlyIqviaReportingJob);
 
 let errorMessage = reporter.addReportingJob(monthlyIqviaReportingJob).error;
 
@@ -37,3 +44,12 @@ if (errorMessage) {
 } else {
   console.warn(`Job '${monthlyIqviaReportingJob.name}' added.`);
 }
+
+console.log(`reporter '${reporter.name}' has ${reporter.jobCount()} jobs.`);
+
+reporter
+  .start()
+  .then(value => console.log("main, reporter start() call returned:", value))
+  .catch(reason => {
+    console.error("main, reporter start() call returned error:", reason);
+  });
